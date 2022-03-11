@@ -23,7 +23,7 @@ export default function Header() {
     const cf = initialize('your-token-here', {
       identifier: id,
       attributes: {
-        email: 'id@harness.io',
+        email: 'email@harness.io',
       },
     });
 
