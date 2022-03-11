@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 
+// @ts-nocheck
+
 import './App.css';
 import { CartItemDetails, CategoryDetails, StoreData } from './data/store-data';
+import { Event, initialize } from '@harnessio/ff-javascript-client-sdk';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Route, BrowserRouter as Router, Switch } from 'react-router-dom';
+import { Route, BrowserRouter as Router, Switch, useParams } from 'react-router-dom';
 import Cart from './Store/Cart';
 import { CartContext } from './Store/CartContext';
 import Checkout from './Store/Checkout';
@@ -31,23 +34,53 @@ function App() {
   const storeData = useMemo(() => new StoreData(), []);
   const [categories, setCategories] = useState([] as CategoryDetails[]);
   const [cart, setCart] = useState(storeData.getCart());
+  const [featureFlags, setFeatureFlags] = useState({});
 
   useEffect(() => {
-    storeData.getCategories().then(data => setCategories(data));
-  }, [storeData]);
+    let id = 'Guest';
+    const cf = initialize('your-token-here', {
+      identifier: id,
+      attributes: {
+        email: 'email@harness.io',
+      },
+    });
+
+    cf.on(Event.READY, flags => {
+      setFeatureFlags(flags);
+      console.log(flags);
+    });
+
+    cf.on(Event.CHANGED, flagInfo => {
+      console.log(flagInfo);
+      if (flagInfo.deleted) {
+        setFeatureFlags(currentFeatureFlags => {
+          delete currentFeatureFlags[flagInfo.flag];
+          return { ...currentFeatureFlags };
+        });
+      } else {
+        setFeatureFlags(currentFeatureFlags => ({ ...currentFeatureFlags, [flagInfo.flag]: flagInfo.value }));
+      }
+    });
+
+    return () => {
+      cf?.close();
+    };
+  }, []);
 
   function updateCart(cart: CartItemDetails[]) {
     storeData.setCart(cart);
     setCart(cart);
   }
 
+  let className = featureFlags.tituloadireita ? 'App.Left' : 'App';
+
   return (
     <CartContext.Provider value={{ cart, setCart: updateCart }}>
       <Router>
-        <div className="App">
+        <div className={className}>
           <Header />
           <Switch>
-            <Route exact path="/">
+            <Route exact path="/:id">
               <Home categories={categories} />
             </Route>
             <Route path="/list/:listId/:itemId">
